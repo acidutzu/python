@@ -17,13 +17,13 @@ description of what you will see in the video:
 _________________________________________________________________________________________________
 # docker related
 ---------------------mysql 
-
+```
 docker run -d -p 3306:3306 --name mysql \
 	-v mysql_storage:/var/lib/mysql \
 	-e MYSQL_ROOT_PASSWORD=parola \
 	--restart unless-stopped \
 	mysql:latest
-
+```
 -enter into docker mysql container interactive shell mode
 - docker exec -it mysql mysql -p
 ----------------------------------------
@@ -31,13 +31,13 @@ docker run -d -p 3306:3306 --name mysql \
 
 
 ---------------------mongo
-
+```
 docker run -d -p 27017:27017 --name mongo \
 	-v mongo_storage:/data/db \
 	-e MONGO_INITDB_ROOT_USERNAME=root \
 	-e MONGO_INITDB_ROOT_PASSWORD=parola \
 	mongo:4.4.6
-	
+```	
 -enter into docker mongo container interactive shell mode
 
 - docker exec -it mongo mongo --username root --password parola	
