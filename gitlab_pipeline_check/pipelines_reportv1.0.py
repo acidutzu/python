@@ -1,8 +1,8 @@
 import argparse
-import importlib
+# import importlib
 import urllib.parse
 import subprocess
-import pandas as pd 
+import pandas as pd #pip install pandas
 from datetime import datetime
 from gitlab import Gitlab #pip install python-gitlab 
 
@@ -43,7 +43,7 @@ def execute_script(pipeline_status, failed_job, pipeline_id):
 
 
 ################################
-def generate_report(pipeline_statuses, failed_jobs):
+def generate_report(pipeline_statuses, failed_jobs, successful_pipelines):
     report_data = []
     for pipeline_id, status in pipeline_statuses.items():
         if status == 'failed':
@@ -55,9 +55,11 @@ def generate_report(pipeline_statuses, failed_jobs):
         job_logs_urlencoded = urllib.parse.quote(job_logs)
         report_data.append({'Failed Job ID': f'<a href="{gitlab_url}/{project_id}/jobs/{job_id}">{job_id}</a>', 'Job Logs': f'<a href="data:text/plain;charset=utf-8,{job_logs_urlencoded}" download="job_{job_id}_logs.txt">Download Logs</a>'})
 
+    for pipeline_id in successful_pipelines:
+        report_data.append({'Pipeline ID': f'<a href="{gitlab_url}/{project_id}/pipelines/{pipeline_id}">{pipeline_id}</a>', 'Status': 'success'})
+
     df = pd.DataFrame(report_data)
 
-    # Apply background color to cells based on status
     def color_cells(val):
         color = 'red' if val == 'failed' else 'green'
         return f'background-color: {color}'
@@ -74,19 +76,20 @@ def generate_report(pipeline_statuses, failed_jobs):
 
     print(f'Pipeline report generated: {filename}')
 
-# def get_pipeline_status(pipeline_id):
-#     gl = Gitlab(gitlab_url, private_token=access_token)
-#     project = gl.projects.get(project_id)
-#     pipeline = project.pipelines.get(pipeline_id)
-#     return pipeline.status, pipeline.failed_job    
+
+def get_pipeline_status(pipeline_id):
+    gl = Gitlab(gitlab_url, private_token=access_token)
+    project = gl.projects.get(project_id)
+    pipeline = project.pipelines.get(pipeline_id)
+    return pipeline.status, pipeline.failed_job    
 
 def process_pipelines(pipeline_ids):
     pipeline_statuses = {}
     failed_jobs = {}
 
     for pipeline_id in pipeline_ids:
-        # pipeline_status, failed_job = get_pipeline_status(pipeline_id)
-        execute_script(pipeline_status, failed_job, pipeline_id)
+        pipeline_status, failed_job = get_pipeline_status(pipeline_id) #!!!
+        execute_script(pipeline_status, failed_job, pipeline_id) #W !!!!
         pipeline_statuses[pipeline_id] = pipeline_status
 
         if failed_job:
@@ -95,9 +98,6 @@ def process_pipelines(pipeline_ids):
     generate_report(pipeline_statuses, failed_jobs)
 
 def main():
-    #     # Check and install missing modules
-    # check_and_install_modules()
-
     parser = argparse.ArgumentParser(description='Process pipeline IDs')
     parser.add_argument('pipeline_ids', nargs='+', help='Pipeline IDs separated by space')
     args = parser.parse_args()
