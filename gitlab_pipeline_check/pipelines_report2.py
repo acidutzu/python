@@ -34,9 +34,9 @@ def process_pipeline(pipeline_id):
     pipeline = project.pipelines.get(pipeline_id)
     
     if pipeline.status == 'success':
-        print(f"Pipeline {pipeline.name} is OK")
+        print(f"Pipeline {pipeline.title} is OK")
     else:
-        print(f"Pipeline {pipeline.name} failed.")
+        print(f"Pipeline {pipeline.title} failed.")
         job_ids, job_names = get_job_ids_and_names(pipeline_id)
 
         for job_id, job_name in zip(job_ids, job_names):
