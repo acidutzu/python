@@ -84,15 +84,15 @@ def generate_report(pipeline_statuses, failed_jobs, successful_pipelines):
 def get_pipeline_ids():
     gl = Gitlab(gitlab_url, private_token=access_token)
     project = gl.projects.get(project_id)
-    schedules = project.schedules.list()
+    pipelines = project.pipelines.list()
 
     pipeline_ids = []
-    for schedule in schedules:
-        if any(phrase in schedule.description for phrase in search_phrases):
-            pipelines = schedule.pipelines.list()
-            pipeline_ids.extend([pipeline.id for pipeline in pipelines])
+    for pipeline in pipelines:
+        if any(phrase in pipeline.description for phrase in search_phrases):
+            pipeline_ids.append(pipeline.id)
 
     return pipeline_ids
+
 
 
 def process_pipelines(pipeline_ids):
