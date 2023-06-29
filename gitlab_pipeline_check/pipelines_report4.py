@@ -32,23 +32,33 @@ def capture_string(text, string_to_find):
 
 
 def get_pipeline_ids():
-    url = f"{gitlab_url}/api/v4/projects/{project_id}/schedules"
-    headers = {'Authorization': f'Bearer {access_token}'}
-    response = requests.get(url, headers=headers)
+    pipeline_ids = []
 
-    if response.status_code == 200:
-        schedules = response.json()
-        pipeline_ids = []
+    for search_phrase in search_phrases:
+        url = f"{gitlab_url}/api/v4/projects/{project_id}/pipeline_schedules"
+        headers = {'Authorization': f'Bearer {access_token}'}
+        response = requests.get(url, headers=headers)
 
-        for schedule in schedules:
-            if any(phrase in schedule['description'] for phrase in search_phrases):
-                pipeline_ids.append(schedule['last_pipeline']['id'])
+        if response.status_code == 200:
+            schedules = response.json()
 
-        return pipeline_ids
+            for schedule in schedules:
+                if search_phrase in schedule['description']:
+                    schedule_id = schedule['id']
+                    pipeline_url = f"{gitlab_url}/api/v4/projects/{project_id}/pipeline_schedules/{schedule_id}/pipelines"
+                    response = requests.get(pipeline_url, headers=headers)
 
-    else:
-        print(f"Failed to retrieve schedules. Error: {response.content}")
-        return []
+                    if response.status_code == 200:
+                        pipelines = response.json()
+                        if len(pipelines) > 0:
+                            pipeline_ids.append(pipelines[0]['id'])
+                    else:
+                        print(f"Failed to retrieve pipelines for schedule {schedule_id}. Error: {response.content}")
+        else:
+            print(f"Failed to retrieve pipeline schedules. Error: {response.content}")
+
+    return pipeline_ids
+
 
 
 def process_pipelines(project_id):
