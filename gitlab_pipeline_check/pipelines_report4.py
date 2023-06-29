@@ -56,7 +56,6 @@ def get_pipeline_ids():
 
 
 
-
 def process_pipelines(project_id):
     pipeline_ids = get_pipeline_ids()
 
@@ -70,32 +69,73 @@ def process_pipelines(project_id):
 
         if response.status_code == 200:
             pipeline = response.json()
+            pipeline_name = pipeline['name']
             pipeline_status = pipeline['status']
+            job_ids = []
+            job_names = []
+            
+            if 'jobs' in pipeline:
+                jobs = pipeline['jobs']
+                for job in jobs:
+                    job_ids.append(job['id'])
+                    job_names.append(job['name'])
+                    
             if pipeline_status == 'success':
-                pipeline_statuses.append({'Pipeline ID': pipeline_id, 'Status': 'OK'})
+                pipeline_statuses.append({'Pipeline ID': pipeline_id, 'Pipeline Name': pipeline_name, 'Status': 'OK'})
             elif pipeline_status == 'failed':
-                job_id = pipeline['user']['id']
-                job_name = pipeline['user']['name']
-                job_logs = get_failed_job_logs(job_id)
-                failed_jobs.append({'Pipeline ID': pipeline_id, 'Failed Job': job_name, 'Job Logs': job_logs})
-        else:
-            print(f"Failed to retrieve pipeline {pipeline_id}. Error: {response.content}")
+                failed_jobs.append({'Pipeline ID': pipeline_id, 'Pipeline Name': pipeline_name, 'Failed Jobs': job_names, 'Job IDs': job_ids})
+                
+    for pipeline in pipeline_statuses:
+        pipeline_id = pipeline['Pipeline ID']
+        pipeline_name = pipeline['Pipeline Name']
+        job_names = ', '.join(failed_jobs['Failed Jobs'])
+        job_ids = ', '.join(failed_jobs['Job IDs'])
+        print(f"Pipeline '{pipeline_name}' with ID '{pipeline_id}' has the following jobs: {job_names} with IDs: {job_ids}")
+    
+    print("--------------------")
 
-    report_data = pd.DataFrame(pipeline_statuses + failed_jobs)
-    report_data['Pipeline ID'] = report_data['Pipeline ID'].apply(lambda x: f'<a href="{gitlab_url}/{project_id}/pipelines/{x}">{x}</a>')
 
-    for string_to_find in strings_to_find:
-        report_data[string_to_find] = report_data['Job Logs'].apply(lambda x: capture_string(x, string_to_find))
 
-    report_html = report_data.to_html(escape=False)
 
-    now = datetime.now().strftime('%Y-%m-%d_%H-%M')
-    filename = f'pipeline_report_{now}.html'
+# def process_pipelines(project_id):
+#     pipeline_ids = get_pipeline_ids()
 
-    with open(filename, 'w') as file:
-        file.write(report_html)
+#     pipeline_statuses = []
+#     failed_jobs = []
 
-    print(f'Pipeline report generated: {filename}')
+#     for pipeline_id in pipeline_ids:
+#         url = f"{gitlab_url}/api/v4/projects/{project_id}/pipelines/{pipeline_id}"
+#         headers = {'Authorization': f'Bearer {access_token}'}
+#         response = requests.get(url, headers=headers)
+
+#         if response.status_code == 200:
+#             pipeline = response.json()
+#             pipeline_status = pipeline['status']
+#             if pipeline_status == 'success':
+#                 pipeline_statuses.append({'Pipeline ID': pipeline_id, 'Status': 'OK'})
+#             elif pipeline_status == 'failed':
+#                 job_id = pipeline['user']['id']
+#                 job_name = pipeline['user']['name']
+#                 job_logs = get_failed_job_logs(job_id)
+#                 failed_jobs.append({'Pipeline ID': pipeline_id, 'Failed Job': job_name, 'Job Logs': job_logs})
+#         else:
+#             print(f"Failed to retrieve pipeline {pipeline_id}. Error: {response.content}")
+
+#     report_data = pd.DataFrame(pipeline_statuses + failed_jobs)
+#     report_data['Pipeline ID'] = report_data['Pipeline ID'].apply(lambda x: f'<a href="{gitlab_url}/{project_id}/pipelines/{x}">{x}</a>')
+
+#     for string_to_find in strings_to_find:
+#         report_data[string_to_find] = report_data['Job Logs'].apply(lambda x: capture_string(x, string_to_find))
+
+#     report_html = report_data.to_html(escape=False)
+
+#     now = datetime.now().strftime('%Y-%m-%d_%H-%M')
+#     filename = f'pipeline_report_{now}.html'
+
+#     with open(filename, 'w') as file:
+#         file.write(report_html)
+
+#     print(f'Pipeline report generated: {filename}')
 
 
 def main():
