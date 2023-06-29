@@ -34,30 +34,19 @@ def capture_string(text, string_to_find):
 def get_pipeline_ids():
     pipeline_ids = []
 
-    for search_phrase in search_phrases:
-        url = f"{gitlab_url}/api/v4/projects/{project_id}/pipeline_schedules"
-        headers = {'Authorization': f'Bearer {access_token}'}
-        response = requests.get(url, headers=headers)
+    gl = Gitlab(gitlab_url, private_token=access_token)
+    project = gl.projects.get(project_id)
 
-        if response.status_code == 200:
-            schedules = response.json()
-
-            for schedule in schedules:
-                if search_phrase in schedule['description']:
-                    schedule_id = schedule['id']
-                    pipeline_url = f"{gitlab_url}/api/v4/projects/{project_id}/pipeline_schedules/{schedule_id}/pipelines"
-                    response = requests.get(pipeline_url, headers=headers)
-
-                    if response.status_code == 200:
-                        pipelines = response.json()
-                        if len(pipelines) > 0:
-                            pipeline_ids.append(pipelines[0]['id'])
-                    else:
-                        print(f"Failed to retrieve pipelines for schedule {schedule_id}. Error: {response.content}")
-        else:
-            print(f"Failed to retrieve pipeline schedules. Error: {response.content}")
+    schedules = project.schedules.list()
+    for schedule in schedules:
+        if schedule.description in search_phrases:
+            last_pipeline = schedule.last_pipeline
+            if last_pipeline:
+                pipeline_ids.append(last_pipeline.id)
 
     return pipeline_ids
+
+
 
 
 
