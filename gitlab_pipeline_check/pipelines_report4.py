@@ -31,20 +31,23 @@ def capture_string(text, string_to_find):
     return ''
 
 
+
 def get_pipeline_ids():
     pipeline_ids = []
 
-    gl = Gitlab(gitlab_url, private_token=access_token)
-    project = gl.projects.get(project_id)
+    # Fetch all pipeline schedules using GitLab API
+    url = f"{gitlab_url}/api/v4/projects/{project_id}/pipeline_schedules"
+    headers = {"PRIVATE-TOKEN": access_token}
+    response = requests.get(url, headers=headers)
+    schedules = response.json()
 
-    schedules = project.schedules.list()
     for schedule in schedules:
-        if schedule.description in search_phrases:
-            last_pipeline = schedule.last_pipeline
-            if last_pipeline:
-                pipeline_ids.append(last_pipeline.id)
+        if schedule.get("description") in search_phrases:
+            last_pipeline_id = schedule.get("last_pipeline").get("id")
+            pipeline_ids.append(last_pipeline_id)
 
     return pipeline_ids
+
 
 
 
