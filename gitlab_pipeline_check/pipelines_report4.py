@@ -3,7 +3,7 @@ import urllib.parse
 import subprocess
 import pandas as pd
 from datetime import datetime
-from gitlab import Gitlab
+import requests
 
 gitlab_url = '<gitlab_url>'
 access_token = '<access_token>'
@@ -14,11 +14,12 @@ characters_to_capture = 5
 
 
 def get_failed_job_logs(job_id):
-    gl = Gitlab(gitlab_url, private_token=access_token)
-    project = gl.projects.get(project_id)
-    job = project.jobs.get(job_id)
-    job_trace = job.trace()
-    return job_trace
+    url = f"{gitlab_url}/api/v4/projects/{project_id}/jobs/{job_id}/trace"
+    headers = {'Authorization': f'Bearer {access_token}'}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.text
+    return ''
 
 
 def capture_string(text, string_to_find):
@@ -30,32 +31,53 @@ def capture_string(text, string_to_find):
     return ''
 
 
+def get_pipeline_ids():
+    url = f"{gitlab_url}/api/v4/projects/{project_id}/schedules"
+    headers = {'Authorization': f'Bearer {access_token}'}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        schedules = response.json()
+        pipeline_ids = []
+
+        for schedule in schedules:
+            if any(phrase in schedule['description'] for phrase in search_phrases):
+                pipeline_ids.append(schedule['last_pipeline']['id'])
+
+        return pipeline_ids
+
+    else:
+        print(f"Failed to retrieve schedules. Error: {response.content}")
+        return []
+
+
 def process_pipelines(project_id):
-    gl = Gitlab(gitlab_url, private_token=access_token)
-    project = gl.projects.get(project_id)
-    schedules = project.schedules.list(all=True)
+    pipeline_ids = get_pipeline_ids()
 
     pipeline_statuses = []
     failed_jobs = []
 
-    for schedule in schedules:
-        if any(phrase in schedule.description for phrase in search_phrases):
-            pipeline_id = schedule.last_pipeline['id']
-            pipeline = project.pipelines.get(pipeline_id)
+    for pipeline_id in pipeline_ids:
+        url = f"{gitlab_url}/api/v4/projects/{project_id}/pipelines/{pipeline_id}"
+        headers = {'Authorization': f'Bearer {access_token}'}
+        response = requests.get(url, headers=headers)
 
-            if pipeline.status == 'success':
+        if response.status_code == 200:
+            pipeline = response.json()
+            pipeline_status = pipeline['status']
+            if pipeline_status == 'success':
                 pipeline_statuses.append({'Pipeline ID': pipeline_id, 'Status': 'OK'})
-            elif pipeline.status == 'failed':
-                failed_job = pipeline.jobs.list(failed=True).first()
-                if failed_job:
-                    job_id = failed_job.id
-                    job_name = failed_job.name
-                    job_logs = get_failed_job_logs(job_id)
-                    failed_jobs.append({'Pipeline ID': pipeline_id, 'Failed Job': job_name, 'Job Logs': job_logs})
+            elif pipeline_status == 'failed':
+                job_id = pipeline['user']['id']
+                job_name = pipeline['user']['name']
+                job_logs = get_failed_job_logs(job_id)
+                failed_jobs.append({'Pipeline ID': pipeline_id, 'Failed Job': job_name, 'Job Logs': job_logs})
+        else:
+            print(f"Failed to retrieve pipeline {pipeline_id}. Error: {response.content}")
 
     report_data = pd.DataFrame(pipeline_statuses + failed_jobs)
     report_data['Pipeline ID'] = report_data['Pipeline ID'].apply(lambda x: f'<a href="{gitlab_url}/{project_id}/pipelines/{x}">{x}</a>')
-    
+
     for string_to_find in strings_to_find:
         report_data[string_to_find] = report_data['Job Logs'].apply(lambda x: capture_string(x, string_to_find))
 
