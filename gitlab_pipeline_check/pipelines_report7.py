@@ -50,5 +50,4 @@ def process_pipelines(project_id):
                 captured_log = job_logs[log_start:log_end]
                 print(f"Job ID: {job_id}, Job Name: {job_name}, Captured Log: {captured_log}")
 
-# Call the process_pipelines function
 process_pipelines(project_id)
