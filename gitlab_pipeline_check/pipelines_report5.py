@@ -25,6 +25,13 @@ def process_pipelines(project_id):
 
         if pipeline_status == 'success':
             pipeline_statuses.append({'Pipeline ID': pipeline_id, 'Status': 'OK'})
+            failed_jobs.append({
+                'Pipeline ID': pipeline_id,
+                'Pipeline Name': pipeline_name,
+                'Jobs Names': 'N/A',
+                'Jobs IDs': 'N/A',
+                'Job Logs': 'N/A'
+            })
         elif pipeline_status == 'failed':
             failed_jobs.append({
                 'Pipeline ID': pipeline_id,
@@ -34,16 +41,34 @@ def process_pipelines(project_id):
                 'Job Logs': job_logs
             })
 
-    pipeline_statuses_df = pd.DataFrame(pipeline_statuses)
+    generate_report(pipeline_statuses, failed_jobs)
 
-    failed_jobs_df = pd.DataFrame(failed_jobs)
+def generate_report(pipeline_statuses, failed_jobs):
+    report_data = []
+    
+    for pipeline_status in pipeline_statuses:
+        report_data.append({'Pipeline ID': pipeline_status['Pipeline ID'], 'Status': pipeline_status['Status']})
 
+    for failed_job in failed_jobs:
+        report_data.append({
+            'Pipeline ID': failed_job['Pipeline ID'],
+            'Status': 'Failed',
+            'Pipeline Name': failed_job['Pipeline Name'],
+            'Job Names': failed_job['Jobs Names'],
+            'Job IDs': failed_job['Jobs IDs'],
+            'Job Logs': failed_job['Job Logs']
+        })
+
+    df = pd.DataFrame(report_data)
+
+    # Create a styled DataFrame
+    styled_df = df.style.applymap(lambda x: 'background-color: green' if x == 'OK' else 'background-color: red', subset=['Status'])
+
+    # Generate HTML report
     now = pd.Timestamp.now().strftime('%Y-%m-%d_%H-%M')
-    pipeline_statuses_filename = f'pipeline_statuses_{now}.html'
-    failed_jobs_filename = f'failed_jobs_{now}.html'
+    report_filename = f'pipeline_report_{now}.html'
 
-    pipeline_statuses_df.to_html(pipeline_statuses_filename, index=False)
-    failed_jobs_df.to_html(failed_jobs_filename, index=False)
+    with open(report_filename, 'w') as file:
+        file.write(styled_df.render())
 
-    print(f"Pipeline statuses saved to: {pipeline_statuses_filename}")
-    print(f"Failed jobs saved to: {failed_jobs_filename}")
+    print(f"Pipeline report generated: {report_filename}")
