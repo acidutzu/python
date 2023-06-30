@@ -45,30 +45,30 @@ def process_pipelines(project_id):
 
 def generate_report(pipeline_statuses, failed_jobs):
     report_data = []
-    
-    for pipeline_status in pipeline_statuses:
-        report_data.append({'Pipeline ID': pipeline_status['Pipeline ID'], 'Status': pipeline_status['Status']})
 
-    for failed_job in failed_jobs:
-        report_data.append({
-            'Pipeline ID': failed_job['Pipeline ID'],
-            'Status': 'Failed',
-            'Pipeline Name': failed_job['Pipeline Name'],
-            'Job Names': failed_job['Jobs Names'],
-            'Job IDs': failed_job['Jobs IDs'],
-            'Job Logs': failed_job['Job Logs']
-        })
+    for pipeline_id, status in pipeline_statuses.items():
+        report_data.append({'Pipeline ID': pipeline_id, 'Status': status})
+
+    for job_id, job_data in failed_jobs.items():
+        report_data.append({'Failed Job ID': job_id, 'Job Name': job_data['name'], 'Job Logs': job_data['logs']})
+
+    for pipeline_id in successful_pipelines:
+        report_data.append({'Pipeline ID': pipeline_id, 'Status': 'success'})
 
     df = pd.DataFrame(report_data)
 
-    # Create a styled DataFrame
-    styled_df = df.style.applymap(lambda x: 'background-color: green' if x == 'OK' else 'background-color: red', subset=['Status'])
+    def color_cells(val):
+        color = 'red' if val == 'failed' else 'green'
+        return f'background-color: {color}'
 
-    # Generate HTML report
-    now = pd.Timestamp.now().strftime('%Y-%m-%d_%H-%M')
-    report_filename = f'pipeline_report_{now}.html'
+    styled_df = df.style.applymap(color_cells, subset=['Status'])
 
-    with open(report_filename, 'w') as file:
-        file.write(styled_df.render())
+    report_html = styled_df.to_html(escape=False)
 
-    print(f"Pipeline report generated: {report_filename}")
+    now = datetime.now().strftime('%Y-%m-%d_%H-%M')
+    filename = f'pipeline_report_{now}.html'
+
+    with open(filename, 'w') as file:
+        file.write(report_html)
+
+    print(f'Pipeline report generated: {filename}')
