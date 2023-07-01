@@ -8,6 +8,7 @@ gitlab_url = 'https://gitlab.com'
 access_token = 'your_token_FFFFFFF000'
 project_id = 40361633
 search_phrases = ["AAA","BBB"]
+teams_webhook_url = '<teams_webhook_url>'
 
 
 def get_pipeline_ids():
@@ -29,6 +30,19 @@ def get_pipeline_ids():
     return pipeline_ids
 
 
+def send_teams_message(message):
+    payload = {
+        'text': message
+    }
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    response = requests.post(teams_webhook_url, data=json.dumps(payload), headers=headers)
+    if response.status_code == 200:
+        print('Message sent successfully.')
+    else:
+        print('Failed to send message.')
+
 
 def get_job_id_names(pipeline_ids):
     gl = Gitlab(gitlab_url, private_token=access_token)
@@ -43,6 +57,10 @@ def get_job_id_names(pipeline_ids):
             captured_words = find_captured_words(job_logs)
             data.append({'Pipeline ID': pipeline_id, 'Job ID': job.id, 'Job Name': job.name, 'Job Logs': job_logs, 'Captured Words': captured_words})
             print(f"Pipeline ID: {pipeline_id}\n\tJob ID: {job.id}\n\tJob Name: {job.name}\n\tJob Logs: {job_logs}\n\tCaptured Words: {captured_words}\n")
+            
+            teams_message = f"Pipeline ID: {pipeline_id}\n\tJob ID: {job.id}\n\tJob Name: {job.name}\n\tJob Logs: {job_logs}\n\tCaptured Words: {captured_words}\n"
+            send_teams_message(teams_message)
+
     df = pd.DataFrame(data)
     df.to_html('report.html', index=False)
 
